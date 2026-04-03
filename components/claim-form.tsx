@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useState } from "react";
+import { FormEvent, useRef, useState } from "react";
 
 import { AnalysisResult, ClaimEnrichment, ClaimInput, ClaimRecord, ClaimType } from "@/lib/types";
 
@@ -48,11 +48,15 @@ export function ClaimForm({ claims }: ClaimFormProps) {
   const [files, setFiles] = useState<File[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [statusMessage, setStatusMessage] = useState("");
+  const resultsRef = useRef<HTMLDivElement | null>(null);
+  const errorRef = useRef<HTMLParagraphElement | null>(null);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setLoading(true);
     setError("");
+    setStatusMessage("Analyzing claim and uploaded documents...");
 
     try {
       const payload = new FormData();
@@ -77,12 +81,20 @@ export function ClaimForm({ claims }: ClaimFormProps) {
       };
       setResult(body.analysis);
       setEnrichment(body.enrichment);
+      setStatusMessage("Analysis complete. Review the recommendation and document parsing below.");
+      window.requestAnimationFrame(() => {
+        resultsRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+      });
     } catch (submissionError) {
       setResult(null);
       setEnrichment(null);
-      setError(
-        submissionError instanceof Error ? submissionError.message : "Something went wrong."
-      );
+      const message =
+        submissionError instanceof Error ? submissionError.message : "Something went wrong.";
+      setError(message);
+      setStatusMessage("");
+      window.requestAnimationFrame(() => {
+        errorRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+      });
     } finally {
       setLoading(false);
     }
@@ -266,10 +278,15 @@ export function ClaimForm({ claims }: ClaimFormProps) {
             </div>
           ) : null}
 
-          {error ? <p className="error-text">{error}</p> : null}
+          {statusMessage ? <p className="status-text">{statusMessage}</p> : null}
+          {error ? (
+            <p className="error-text" ref={errorRef}>
+              {error}
+            </p>
+          ) : null}
         </form>
 
-        <aside className="results-stack">
+        <aside className="results-stack" ref={resultsRef}>
           <div className="panel result-panel">
             <div className="panel-heading compact">
               <div>

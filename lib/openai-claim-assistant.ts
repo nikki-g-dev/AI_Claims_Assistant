@@ -21,81 +21,100 @@ export async function enrichClaimWithOpenAI(
   files: File[]
 ): Promise<ClaimEnrichment> {
   if (!process.env.OPENAI_API_KEY) {
-    return buildFallbackEnrichment(claim, analysis, files, "Add OPENAI_API_KEY to enable OpenAI summaries and document parsing.");
+    return buildFallbackEnrichment(
+      claim,
+      analysis,
+      files,
+      "Add OPENAI_API_KEY to enable OpenAI summaries and document parsing."
+    );
   }
 
-  const client = new OpenAI({
-    apiKey: process.env.OPENAI_API_KEY
-  });
+  try {
+    const client = new OpenAI({
+      apiKey: process.env.OPENAI_API_KEY
+    });
 
-  const supportedUploads = files
-    .map((file) => classifyUpload(file))
-    .filter((upload): upload is SupportedUpload => upload !== null);
+    const supportedUploads = files
+      .map((file) => classifyUpload(file))
+      .filter((upload): upload is SupportedUpload => upload !== null);
 
-  const content: ResponseInputMessageContentList = [
-    {
-      type: "input_text",
-      text:
-        "You are an insurance claims assistant. Review the claim and uploaded documents, then return strict JSON with this shape: " +
-        '{"aiSummary":"string","claimantStory":"string","coverageSnapshot":"string","extractedFacts":["string"],"followUps":["string"],"parsedDocuments":[{"filename":"string","mimeType":"string","summary":"string","keyFacts":["string"],"missingInfo":["string"]}]}. ' +
-        "Keep each paragraph concise, mention likely supporting evidence, and only include facts grounded in the claim or documents."
-    },
-    {
-      type: "input_text",
-      text: `Claim payload:\n${JSON.stringify(claim, null, 2)}\n\nDeterministic analysis:\n${JSON.stringify(analysis, null, 2)}`
-    }
-  ];
-
-  for (const upload of supportedUploads) {
-    const base64 = await toBase64(upload.file);
-
-    if (upload.transportType === "image") {
-      const imagePart: ResponseInputImage = {
-        type: "input_image",
-        detail: "auto",
-        image_url: `data:${upload.file.type};base64,${base64}`
-      };
-      const promptPart: ResponseInputText = {
-        type: "input_text",
-        text: `The previous image is named ${upload.file.name}. Extract claim-relevant details from it.`
-      };
-      content.push(imagePart, promptPart);
-      continue;
-    }
-
-    const filePart: ResponseInputFile = {
-      type: "input_file",
-      filename: upload.file.name,
-      file_data: `data:${upload.file.type || "application/octet-stream"};base64,${base64}`
-    };
-    content.push(filePart);
-  }
-
-  const response = await client.responses.create({
-    model: DEFAULT_MODEL,
-    input: [
+    const content: ResponseInputMessageContentList = [
       {
-        role: "user",
-        content
+        type: "input_text",
+        text:
+          "You are an insurance claims assistant. Review the claim and uploaded documents, then return strict JSON with this shape: " +
+          '{"aiSummary":"string","claimantStory":"string","coverageSnapshot":"string","extractedFacts":["string"],"followUps":["string"],"parsedDocuments":[{"filename":"string","mimeType":"string","summary":"string","keyFacts":["string"],"missingInfo":["string"]}]}. ' +
+          "Keep each paragraph concise, mention likely supporting evidence, and only include facts grounded in the claim or documents."
+      },
+      {
+        type: "input_text",
+        text: `Claim payload:\n${JSON.stringify(claim, null, 2)}\n\nDeterministic analysis:\n${JSON.stringify(analysis, null, 2)}`
       }
-    ]
-  });
+    ];
 
-  const payload = parseJsonObject(response.output_text);
+    for (const upload of supportedUploads) {
+      const base64 = await toBase64(upload.file);
 
-  return {
-    aiSummary: coerceString(payload.aiSummary, analysis.summary),
-    claimantStory: coerceString(payload.claimantStory, claim.description),
-    coverageSnapshot: coerceString(
-      payload.coverageSnapshot,
-      `${analysis.recommendation} with estimated resolution in ${analysis.estimatedResolution}.`
-    ),
-    extractedFacts: coerceStringArray(payload.extractedFacts, analysis.riskFlags),
-    followUps: coerceStringArray(payload.followUps, analysis.nextActions),
-    parsedDocuments: coerceDocumentArray(payload.parsedDocuments, files),
-    aiEnabled: true,
-    model: DEFAULT_MODEL
-  };
+      if (upload.transportType === "image") {
+        const imagePart: ResponseInputImage = {
+          type: "input_image",
+          detail: "auto",
+          image_url: `data:${upload.file.type};base64,${base64}`
+        };
+        const promptPart: ResponseInputText = {
+          type: "input_text",
+          text: `The previous image is named ${upload.file.name}. Extract claim-relevant details from it.`
+        };
+        content.push(imagePart, promptPart);
+        continue;
+      }
+
+      const filePart: ResponseInputFile = {
+        type: "input_file",
+        filename: upload.file.name,
+        file_data: `data:${upload.file.type || "application/octet-stream"};base64,${base64}`
+      };
+      content.push(filePart);
+    }
+
+    const response = await client.responses.create({
+      model: DEFAULT_MODEL,
+      input: [
+        {
+          role: "user",
+          content
+        }
+      ]
+    });
+
+    const payload = parseJsonObject(response.output_text);
+
+    return {
+      aiSummary: coerceString(payload.aiSummary, analysis.summary),
+      claimantStory: coerceString(payload.claimantStory, claim.description),
+      coverageSnapshot: coerceString(
+        payload.coverageSnapshot,
+        `${analysis.recommendation} with estimated resolution in ${analysis.estimatedResolution}.`
+      ),
+      extractedFacts: coerceStringArray(payload.extractedFacts, analysis.riskFlags),
+      followUps: coerceStringArray(payload.followUps, analysis.nextActions),
+      parsedDocuments: coerceDocumentArray(payload.parsedDocuments, files),
+      aiEnabled: true,
+      model: DEFAULT_MODEL
+    };
+  } catch (error) {
+    const reason =
+      error instanceof Error && error.message.trim()
+        ? error.message.trim()
+        : "The OpenAI request did not complete successfully.";
+
+    return buildFallbackEnrichment(
+      claim,
+      analysis,
+      files,
+      `OpenAI parsing was unavailable for this upload, so fallback analysis was used instead. ${reason}`
+    );
+  }
 }
 
 function buildFallbackEnrichment(
