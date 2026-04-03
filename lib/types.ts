@@ -35,3 +35,23 @@ export interface AnalysisResult {
   nextActions: string[];
   estimatedResolution: string;
 }
+
+export interface ParsedDocument {
+  filename: string;
+  mimeType: string;
+  summary: string;
+  keyFacts: string[];
+  missingInfo: string[];
+}
+
+export interface ClaimEnrichment {
+  aiSummary: string;
+  claimantStory: string;
+  coverageSnapshot: string;
+  extractedFacts: string[];
+  followUps: string[];
+  parsedDocuments: ParsedDocument[];
+  aiEnabled: boolean;
+  model?: string;
+  note?: string;
+}

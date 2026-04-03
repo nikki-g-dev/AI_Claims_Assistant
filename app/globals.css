@@ -245,9 +245,43 @@ textarea {
 
 .recommendation-card p,
 .empty-state,
-.queue-item small {
+.queue-item small,
+.support-copy {
   color: var(--muted);
   line-height: 1.6;
+}
+
+.upload-list,
+.parsed-documents {
+  display: grid;
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.upload-item,
+.parsed-document,
+.ai-summary-card {
+  padding: 16px 18px;
+  border-radius: 20px;
+  background: var(--surface-strong);
+  border: 1px solid var(--line);
+}
+
+.upload-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.upload-item span,
+.ai-summary-card small {
+  color: var(--muted);
+}
+
+.ai-summary-card p,
+.parsed-document p {
+  margin: 0;
 }
 
 .list-block {
@@ -285,6 +319,12 @@ textarea {
 .queue-item p {
   margin: 10px 0 6px;
   font-size: 1.02rem;
+}
+
+.parsed-document ul {
+  margin: 12px 0 0;
+  padding-left: 20px;
+  line-height: 1.7;
 }
 
 .error-text {

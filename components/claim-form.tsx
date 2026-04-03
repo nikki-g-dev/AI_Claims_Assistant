@@ -2,7 +2,7 @@
 
 import { FormEvent, useState } from "react";
 
-import { AnalysisResult, ClaimInput, ClaimRecord, ClaimType } from "@/lib/types";
+import { AnalysisResult, ClaimEnrichment, ClaimInput, ClaimRecord, ClaimType } from "@/lib/types";
 
 const documentOptions = [
   "ID Proof",
@@ -44,6 +44,8 @@ interface ClaimFormProps {
 export function ClaimForm({ claims }: ClaimFormProps) {
   const [form, setForm] = useState<ClaimInput>(initialForm);
   const [result, setResult] = useState<AnalysisResult | null>(null);
+  const [enrichment, setEnrichment] = useState<ClaimEnrichment | null>(null);
+  const [files, setFiles] = useState<File[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
@@ -53,12 +55,15 @@ export function ClaimForm({ claims }: ClaimFormProps) {
     setError("");
 
     try {
-      const response = await fetch("/api/analyze", {
+      const payload = new FormData();
+      payload.append("claim", JSON.stringify(form));
+      for (const file of files) {
+        payload.append("documents", file);
+      }
+
+      const response = await fetch("/api/claim-assistant", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify(form)
+        body: payload
       });
 
       if (!response.ok) {
@@ -66,10 +71,15 @@ export function ClaimForm({ claims }: ClaimFormProps) {
         throw new Error(payload.error ?? "Analysis failed.");
       }
 
-      const payload = (await response.json()) as { result: AnalysisResult };
-      setResult(payload.result);
+      const body = (await response.json()) as {
+        analysis: AnalysisResult;
+        enrichment: ClaimEnrichment;
+      };
+      setResult(body.analysis);
+      setEnrichment(body.enrichment);
     } catch (submissionError) {
       setResult(null);
+      setEnrichment(null);
       setError(
         submissionError instanceof Error ? submissionError.message : "Something went wrong."
       );
@@ -85,6 +95,10 @@ export function ClaimForm({ claims }: ClaimFormProps) {
         ? current.documents.filter((item) => item !== document)
         : [...current.documents, document]
     }));
+  }
+
+  function updateFiles(selection: FileList | null) {
+    setFiles(selection ? Array.from(selection) : []);
   }
 
   return (
@@ -231,6 +245,27 @@ export function ClaimForm({ claims }: ClaimFormProps) {
             </div>
           </div>
 
+          <label className="full-width">
+            Upload supporting documents
+            <input
+              type="file"
+              accept=".pdf,.doc,.docx,.txt,.md,.csv,.json,.png,.jpg,.jpeg,.webp"
+              multiple
+              onChange={(event) => updateFiles(event.target.files)}
+            />
+          </label>
+
+          {files.length > 0 ? (
+            <div className="upload-list">
+              {files.map((file) => (
+                <div className="upload-item" key={`${file.name}-${file.size}`}>
+                  <strong>{file.name}</strong>
+                  <span>{Math.max(1, Math.round(file.size / 1024))} KB</span>
+                </div>
+              ))}
+            </div>
+          ) : null}
+
           {error ? <p className="error-text">{error}</p> : null}
         </form>
 
@@ -274,11 +309,75 @@ export function ClaimForm({ claims }: ClaimFormProps) {
                   <span>Estimated resolution</span>
                   <strong>{result.estimatedResolution}</strong>
                 </div>
+
+                <div className="list-block">
+                  <h3>AI claim summary</h3>
+                  <div className="ai-summary-card">
+                    <p>{enrichment?.aiSummary ?? "No AI summary generated yet."}</p>
+                    {enrichment?.note ? <small>{enrichment.note}</small> : null}
+                  </div>
+                </div>
+
+                {enrichment ? (
+                  <>
+                    <div className="list-block">
+                      <h3>Claimant story</h3>
+                      <p className="support-copy">{enrichment.claimantStory}</p>
+                    </div>
+
+                    <div className="list-block">
+                      <h3>Coverage snapshot</h3>
+                      <p className="support-copy">{enrichment.coverageSnapshot}</p>
+                    </div>
+
+                    <div className="list-block">
+                      <h3>Extracted facts</h3>
+                      <ul>
+                        {enrichment.extractedFacts.map((fact) => (
+                          <li key={fact}>{fact}</li>
+                        ))}
+                      </ul>
+                    </div>
+
+                    <div className="list-block">
+                      <h3>Document parsing</h3>
+                      <div className="parsed-documents">
+                        {enrichment.parsedDocuments.length > 0 ? (
+                          enrichment.parsedDocuments.map((document) => (
+                            <article className="parsed-document" key={document.filename}>
+                              <div className="queue-topline">
+                                <strong>{document.filename}</strong>
+                                <span>{document.mimeType}</span>
+                              </div>
+                              <p className="support-copy">{document.summary}</p>
+                              {document.keyFacts.length > 0 ? (
+                                <ul>
+                                  {document.keyFacts.map((fact) => (
+                                    <li key={fact}>{fact}</li>
+                                  ))}
+                                </ul>
+                              ) : null}
+                              {document.missingInfo.length > 0 ? (
+                                <p className="support-copy">
+                                  Missing info: {document.missingInfo.join(", ")}
+                                </p>
+                              ) : null}
+                            </article>
+                          ))
+                        ) : (
+                          <p className="support-copy">
+                            Upload files to generate document-level extraction and summarization.
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  </>
+                ) : null}
               </>
             ) : (
               <p className="empty-state">
-                Submit the form to generate a recommendation, missing-document checklist, and
-                adjuster action plan.
+                Submit the form to generate a recommendation, AI claim summary, document parsing,
+                and adjuster action plan.
               </p>
             )}
           </div>

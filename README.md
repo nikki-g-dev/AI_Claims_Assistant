@@ -27,10 +27,19 @@ npm run dev
 
 Open `http://localhost:3000`.
 
+Create a `.env.local` file to enable OpenAI-powered claim summaries and document parsing:
+
+```bash
+OPENAI_API_KEY=your_api_key_here
+# Optional override
+OPENAI_MODEL=gpt-4o-mini
+```
+
 ## API routes
 
 - `GET /api/claims`
 - `POST /api/analyze`
+- `POST /api/claim-assistant`
 
 Example payload for `/api/analyze`:
 
@@ -68,4 +77,4 @@ lib/
 
 ## Notes
 
-This project uses a deterministic analysis engine so it works without external API keys. If you want, it can be extended later with OpenAI or another LLM provider for narrative summaries, document extraction, and claimant chat support.
+This project always includes a deterministic analysis engine, so the dashboard still works without external API keys. When `OPENAI_API_KEY` is configured, the app also sends claim details and uploaded documents to the OpenAI Responses API for richer summaries and document-level extraction. OpenAI’s file-input docs state that Responses API requests can send files as `input_file` items, including PDFs and Office documents, and that supported models can also accept image inputs for analysis. See [OpenAI file inputs](https://developers.openai.com/api/docs/guides/file-inputs).
