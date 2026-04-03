@@ -1,4 +1,4 @@
-# AI Claims Assistant
+# GenAI Claims Assistant
 
 A polished Next.js app for intake, triage, and decision support in an insurance-style claims workflow.
 

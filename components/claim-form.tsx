@@ -116,7 +116,7 @@ export function ClaimForm({ claims }: ClaimFormProps) {
   return (
     <div className="workspace">
       <section className="panel hero-panel">
-        <p className="eyebrow">AI Claims Assistant</p>
+        <p className="eyebrow">GenAI Claims Assistant</p>
         <h1>Review, triage, and explain claims in one focused workspace.</h1>
         <p className="hero-copy">
           This demo combines intake, risk scoring, missing-document detection, and next-step
