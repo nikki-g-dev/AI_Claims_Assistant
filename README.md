@@ -22,7 +22,7 @@ The target request flow is:
 
 `User -> API -> Kafka -> Services -> LLM -> Vector DB -> Response`
 
-See [docs/architecture.md](/Users/rahul/Desktop/Nikki%20docs/genai-claims-assistant/docs/architecture.md) for the full diagram and service notes.
+See [docs/architecture.md](docs/architecture.md) for the full diagram and service notes.
 
 ## Services
 
@@ -67,4 +67,4 @@ OPENAI_MODEL=gpt-4o-mini
 
 ## Optional local orchestration
 
-A starter [docker-compose.yml](/Users/rahul/Desktop/Nikki%20docs/genai-claims-assistant/docker-compose.yml) is included for bringing up Kafka, Zookeeper, the backend, the AI service, and the frontend together.
+A starter [docker-compose.yml](docker-compose.yml) is included for bringing up Kafka, Zookeeper, the backend, the AI service, and the frontend together.
