@@ -14,6 +14,8 @@ genai-claims-assistant/
 └── docker-compose.yml
 ```
 
+This is the intended logical order of the repo. GitHub’s web file browser may still display folders alphabetically.
+
 ## Architecture
 
 The target request flow is:
