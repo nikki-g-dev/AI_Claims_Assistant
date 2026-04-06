@@ -68,3 +68,9 @@ OPENAI_MODEL=gpt-4o-mini
 ## Optional local orchestration
 
 A starter [docker-compose.yml](docker-compose.yml) is included for bringing up Kafka, Zookeeper, the backend, the AI service, and the frontend together.
+
+Notes:
+
+- Kafka is configured with both an internal container listener and a localhost listener.
+- The frontend container runs a production Next.js server on port `3000`.
+- The backend container is wired to Kafka via `kafka:29092`.
